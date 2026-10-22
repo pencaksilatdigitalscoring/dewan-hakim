@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>WUSHU SANDA - Command Center Dewan Juri</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,400;0,700;0,900;1,700&display=swap');
+        
+        html, body {
+            overscroll-behavior: none; 
+            touch-action: none;
+        }
+        ::-webkit-scrollbar { display: none; }
+
+        body { 
+            font-family: 'Roboto Condensed', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc; 
+            margin: 0; 
+            padding: 0;
+            height: 100dvh; 
+            width: 100vw; 
+            overflow: hidden; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* PERINGATAN PORTRAIT (Tampil hanya jika HP berdiri) */
+        #portrait-warning { display: none; }
+        @media (orientation: portrait) {
+            #portrait-warning { display: flex; }
+            #main-app { display: none !important; }
+        }
+
+        /* Custom Actions */
+        .btn-wushu { transition: all 0.1s ease; border-bottom-width: 0.4vh; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 1vh; cursor: pointer; text-transform: uppercase; }
+        .btn-wushu:active { border-bottom-width: 0.1vh; transform: scale(0.97) translateY(0.3vh); }
+
+        .btn-warning { background: #eab308; border-color: #a16207; color: #000; }
+        .btn-caution { background: #dc2626; border-color: #991b1b; color: #fff; }
+        .btn-ringout { background: #0891b2; border-color: #155e75; color: #fff; }
+        .btn-8count { background: #f97316; border-color: #c2410c; color: #fff; }
+        .btn-absolute { background: #7e22ce; border-color: #581c87; color: #fff; }
+        .btn-history { background: #2563eb; border-color: #1e40af; color: #fff; }
+
+        /* UI Colors */
+        .bg-wushu-red { background: linear-gradient(145deg, #dc2626, #991b1b); }
+        .bg-wushu-blue { background: linear-gradient(145deg, #1d4ed8, #1e3a8a); }
+        .text-glow-red { text-shadow: 0 0 2vh rgba(239, 68, 68, 0.8); }
+        .text-glow-blue { text-shadow: 0 0 2vh rgba(59, 130, 246, 0.8); }
+        .text-glow-green { text-shadow: 0 0 2vh rgba(34, 197, 94, 0.8); color: #4ade80 !important; }
+
+        /* Lamps & Indicators */
+        .juri-lamp { width: 1.5vh; height: 1.5vh; border-radius: 50%; border: 0.2vh solid rgba(255,255,255,0.2); transition: all 0.2s; }
+        .lamp-off { background-color: #334155; }
+        .lamp-on { background-color: #10b981; box-shadow: 0 0 1vh #10b981; border-color: #fff; }
+        
+        /* Win Indicators (Modified to Red/Blue) */
+        .round-win-circle { width: 3vh; height: 3vh; border-radius: 50%; border: 0.2vh solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); transition: all 0.3s ease; }
+        .win-red { background: #ef4444; border-color: #fff; box-shadow: 0 0 2vh #ef4444; }
+        .win-blue { background: #3b82f6; border-color: #fff; box-shadow: 0 0 2vh #3b82f6; }
+
+        /* Penalty Trackers */
+        .track-box { background: rgba(0,0,0,0.4); border-radius: 1vh; padding: 0.5vh; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
+        .track-val { font-size: 3.5vh; font-weight: 900; line-height: 1; }
+        .track-label { font-size: 1.2vh; color: #cbd5e1; text-transform: uppercase; font-weight: 700; margin-top: 0.5vh; text-align: center; line-height: 1.1; }
+
+        /* Modals Overlay */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); z-index: 50000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        .sync-badge { position: absolute; top: 1vh; right: 1vh; font-size: 1.2vh; background: #10b981; padding: 0.5vh 1vh; border-radius: 0.5vh; font-weight: bold; opacity: 0; transition: opacity 0.3s; z-index: 50; }
+        .sync-badge.show { opacity: 1; }
+        
+        /* Modal Scroll Tabel Riwayat */
+        .custom-scroll::-webkit-scrollbar { display: block; height: 1vh; width: 1vh; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 1vh; }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY PERINGATAN HP PORTRAIT -->
+    <div id="portrait-warning" class="fixed inset-0 z-[60000] bg-slate-900 flex-col items-center justify-center text-center p-[2vh]">
+        <i class="fas fa-mobile-alt text-emerald-400 text-[15vh] mb-[2vh] animate-pulse" style="transform: rotate(90deg);"></i>
+        <h1 class="text-white text-[4vh] font-black uppercase mb-[1vh]">Putar HP Anda</h1>
+        <p class="text-slate-300 text-[2.5vh] font-bold mb-[3vh]">Aplikasi Dewan ini dirancang khusus untuk layar mendatar (Landscape).</p>
+        <p class="text-yellow-400 text-[2vh] font-bold animate-bounce"><i class="fas fa-hand-pointer mr-2"></i>Ketuk layar di mana saja setelah memutar HP</p>
+    </div>
+
+    <!-- APP UTAMA DEWAN -->
+    <div id="main-app" class="flex flex-col h-[100dvh] w-full relative">
+        
+        <!-- HEADER PENGATURAN (Tinggi 15%) -->
+        <div class="h-[15%] bg-slate-800 border-b-[0.2vh] border-slate-700 flex justify-between items-center px-[3vh] relative z-10 shrink-0 shadow-lg">
+            <div id="sync-indicator" class="sync-badge"><i class="fas fa-sync fa-spin mr-[0.5vh]"></i> Tersinkronisasi</div>
+            
+            <!-- Info Partai -->
+            <div class="w-[30%] h-[80%]">
+                <div class="bg-slate-900 rounded-[1vh] border border-slate-700 h-full flex flex-col justify-center px-[2vh]">
+                    <div class="text-[1.2vh] text-slate-400 font-bold uppercase tracking-widest mb-[0.2vh]">Status Partai Aktif</div>
+                    <div id="dw-match-info" class="text-[2vh] font-black text-amber-400 uppercase truncate">MENUNGGU OPERATOR...</div>
+                </div>
+            </div>
+
+            <!-- Timer -->
+            <div class="w-[40%] flex flex-col items-center justify-center">
+                <div class="text-[1.2vh] text-slate-400 font-bold uppercase tracking-widest mb-[0.2vh]">Waktu Tanding</div>
+                <div id="dw-timer-disp" class="text-[7vh] font-black font-mono text-white drop-shadow-[0_0_1vh_rgba(255,255,255,0.4)] leading-none">00:00</div>
+            </div>
+
+            <!-- Ronde & Lampu Juri -->
+            <div class="w-[30%] h-[80%] flex justify-end">
+                <div class="bg-slate-900 rounded-[1vh] border border-slate-700 h-full w-full flex flex-col justify-center px-[2vh]">
+                    <div class="flex justify-between items-center mb-[0.5vh]">
+                        <span class="text-[1.2vh] text-slate-400 font-bold uppercase">Berjalan:</span>
+                        <span id="dw-babak-disp" class="text-[2.2vh] font-black text-amber-400">RONDE 1</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[1.2vh] text-slate-500 font-bold uppercase">Koneksi Juri:</span>
+                        <div class="flex gap-[0.8vh]">
+                            <div id="lamp-j1" class="juri-lamp lamp-off"></div>
+                            <div id="lamp-j2" class="juri-lamp lamp-off"></div>
+                            <div id="lamp-j3" class="juri-lamp lamp-off"></div>
+                            <div id="lamp-j4" class="juri-lamp lamp-off"></div>
+                            <div id="lamp-j5" class="juri-lamp lamp-off"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN SPLIT AREA (Tinggi 85%) -->
+        <div class="flex-1 flex flex-row min-h-0 w-full relative">
+            
+            <!-- SUDUT MERAH -->
+            <div class="flex-1 flex flex-col border-r-[0.3vh] border-black bg-wushu-red p-[2vh] relative z-0">
+                <div class="flex justify-between items-start z-10 shrink-0">
+                    <div class="flex flex-col">
+                        <h2 id="dw-m-name" class="text-[3.5vh] font-black text-white uppercase leading-none tracking-wide drop-shadow-md">SUDUT MERAH</h2>
+                        <h3 id="dw-m-kont" class="text-[1.8vh] font-bold text-red-200 uppercase tracking-widest mt-[0.5vh] bg-black/20 px-2 py-1 rounded w-max inline-block">KONTINGEN</h3>
+                    </div>
+                    <div class="flex gap-[1vh]">
+                        <div id="m-win-1" class="round-win-circle"></div>
+                        <div id="m-win-2" class="round-win-circle"></div>
+                        <div id="m-win-3" class="round-win-circle"></div>
+                    </div>
+                </div>
+                
+                <!-- Score & Adjust Button -->
+                <div class="flex-1 flex flex-col items-center justify-center z-10 relative">
+                    <div class="text-[1.8vh] font-black text-red-100 bg-black/30 px-[2vh] py-[0.5vh] rounded-full uppercase tracking-[0.2em] mb-[-2vh] z-20 shadow-lg">Total Ronde Menang</div>
+                    <div id="score-m" class="text-[22vh] font-black leading-none text-white text-glow-red font-mono tracking-tighter">0</div>
+                    
+                    <div class="flex gap-[1.5vh] mt-[1vh]">
+                        <button onclick="manualAdjust('merah', -1)" class="w-[8vh] h-[5vh] bg-white/10 border border-white/20 rounded-[1vh] text-[2.5vh] font-bold text-white active:bg-white/30 transition-all">-1</button>
+                        <button onclick="manualAdjust('merah', 1)" class="w-[8vh] h-[5vh] bg-white/10 border border-white/20 rounded-[1vh] text-[2.5vh] font-bold text-white active:bg-white/30 transition-all">+1</button>
+                    </div>
+                </div>
+
+                <!-- Tracker Hukuman -->
+                <div class="grid grid-cols-4 gap-[1vh] z-10 h-[10vh] shrink-0 mt-[1vh]">
+                    <div class="track-box"><span id="trk-m-warn" class="track-val text-yellow-400">0</span><span class="track-label">Teguran</span></div>
+                    <div class="track-box"><span id="trk-m-cau" class="track-val text-white">0</span><span class="track-label text-red-300">Peringat<br>an (+2)</span></div>
+                    <div class="track-box"><span id="trk-m-out" class="track-val text-cyan-300">0</span><span class="track-label text-cyan-100">Keluar<br>Matras</span></div>
+                    <div class="track-box"><span id="trk-m-8c" class="track-val text-orange-400">0</span><span class="track-label text-orange-200">8-Count<br>(+2)</span></div>
+                </div>
+            </div>
+
+            <!-- ================= PANEL JURI TENGAH ================= -->
+            <div class="w-[30vh] bg-[#0b1120] border-x-[0.4vh] border-black flex flex-col items-center justify-center z-20 shadow-[0_0_4vh_rgba(0,0,0,0.8)] shrink-0 py-[2vh] relative">
+                
+                <h3 class="text-yellow-400 font-black text-[3.5vh] uppercase tracking-widest mb-[4vh] drop-shadow-[0_0_0.8vh_rgba(250,204,21,0.6)]">Ronde <span id="mid-round-num">-</span></h3>
+                
+                <div class="flex flex-col gap-[2.5vh] w-full px-[3vh]">
+                    <!-- Juri 1 -->
+                    <div class="flex items-center justify-center w-full relative h-[4.5vh]">
+                        <span class="absolute left-0 text-yellow-400 font-black text-[3.5vh] drop-shadow-[0_0_0.5vh_rgba(250,204,21,0.8)] leading-none w-[3vh] text-center">1</span>
+                        <div class="flex rounded-[0.8vh] border-[0.3vh] border-slate-400 overflow-hidden shadow-lg h-full">
+                            <div id="mid-m-j1" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                            <div id="mid-b-j1" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                        </div>
+                        <div id="mid-lamp-j1" class="absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] transition-all"></div>
+                    </div>
+                    <!-- Juri 2 -->
+                    <div class="flex items-center justify-center w-full relative h-[4.5vh]">
+                        <span class="absolute left-0 text-yellow-400 font-black text-[3.5vh] drop-shadow-[0_0_0.5vh_rgba(250,204,21,0.8)] leading-none w-[3vh] text-center">2</span>
+                        <div class="flex rounded-[0.8vh] border-[0.3vh] border-slate-400 overflow-hidden shadow-lg h-full">
+                            <div id="mid-m-j2" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                            <div id="mid-b-j2" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                        </div>
+                        <div id="mid-lamp-j2" class="absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] transition-all"></div>
+                    </div>
+                    <!-- Juri 3 -->
+                    <div class="flex items-center justify-center w-full relative h-[4.5vh]">
+                        <span class="absolute left-0 text-yellow-400 font-black text-[3.5vh] drop-shadow-[0_0_0.5vh_rgba(250,204,21,0.8)] leading-none w-[3vh] text-center">3</span>
+                        <div class="flex rounded-[0.8vh] border-[0.3vh] border-slate-400 overflow-hidden shadow-lg h-full">
+                            <div id="mid-m-j3" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                            <div id="mid-b-j3" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                        </div>
+                        <div id="mid-lamp-j3" class="absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] transition-all"></div>
+                    </div>
+                    <!-- Juri 4 -->
+                    <div class="flex items-center justify-center w-full relative h-[4.5vh]">
+                        <span class="absolute left-0 text-yellow-400 font-black text-[3.5vh] drop-shadow-[0_0_0.5vh_rgba(250,204,21,0.8)] leading-none w-[3vh] text-center">4</span>
+                        <div class="flex rounded-[0.8vh] border-[0.3vh] border-slate-400 overflow-hidden shadow-lg h-full">
+                            <div id="mid-m-j4" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                            <div id="mid-b-j4" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                        </div>
+                        <div id="mid-lamp-j4" class="absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] transition-all"></div>
+                    </div>
+                    <!-- Juri 5 -->
+                    <div class="flex items-center justify-center w-full relative h-[4.5vh]">
+                        <span class="absolute left-0 text-yellow-400 font-black text-[3.5vh] drop-shadow-[0_0_0.5vh_rgba(250,204,21,0.8)] leading-none w-[3vh] text-center">5</span>
+                        <div class="flex rounded-[0.8vh] border-[0.3vh] border-slate-400 overflow-hidden shadow-lg h-full">
+                            <div id="mid-m-j5" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                            <div id="mid-b-j5" class="w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-colors">0</div>
+                        </div>
+                        <div id="mid-lamp-j5" class="absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] transition-all"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- ================= AKHIR PANEL JURI ================= -->
+
+            <!-- SUDUT BIRU -->
+            <div class="flex-1 flex flex-col bg-wushu-blue p-[2vh] relative z-0 border-l-[0.3vh] border-black">
+                <div class="flex justify-between items-start z-10 shrink-0 flex-row-reverse text-right">
+                    <div class="flex flex-col items-end">
+                        <h2 id="dw-b-name" class="text-[3.5vh] font-black text-white uppercase leading-none tracking-wide drop-shadow-md">SUDUT BIRU</h2>
+                        <h3 id="dw-b-kont" class="text-[1.8vh] font-bold text-blue-200 uppercase tracking-widest mt-[0.5vh] bg-black/20 px-2 py-1 rounded w-max inline-block">KONTINGEN</h3>
+                    </div>
+                    <div class="flex gap-[1vh] flex-row-reverse">
+                        <div id="b-win-3" class="round-win-circle"></div>
+                        <div id="b-win-2" class="round-win-circle"></div>
+                        <div id="b-win-1" class="round-win-circle"></div>
+                    </div>
+                </div>
+                
+                <!-- Score & Adjust Button -->
+                <div class="flex-1 flex flex-col items-center justify-center z-10 relative">
+                    <div class="text-[1.8vh] font-black text-blue-100 bg-black/30 px-[2vh] py-[0.5vh] rounded-full uppercase tracking-[0.2em] mb-[-2vh] z-20 shadow-lg">Total Ronde Menang</div>
+                    <div id="score-b" class="text-[22vh] font-black leading-none text-white text-glow-blue font-mono tracking-tighter">0</div>
+                    
+                    <div class="flex gap-[1.5vh] mt-[1vh]">
+                        <button onclick="manualAdjust('biru', -1)" class="w-[8vh] h-[5vh] bg-white/10 border border-white/20 rounded-[1vh] text-[2.5vh] font-bold text-white active:bg-white/30 transition-all">-1</button>
+                        <button onclick="manualAdjust('biru', 1)" class="w-[8vh] h-[5vh] bg-white/10 border border-white/20 rounded-[1vh] text-[2.5vh] font-bold text-white active:bg-white/30 transition-all">+1</button>
+                    </div>
+                </div>
+
+                <!-- Tracker Hukuman -->
+                <div class="grid grid-cols-4 gap-[1vh] z-10 h-[10vh] shrink-0 mt-[1vh]">
+                    <div class="track-box"><span id="trk-b-warn" class="track-val text-yellow-400">0</span><span class="track-label">Teguran</span></div>
+                    <div class="track-box"><span id="trk-b-cau" class="track-val text-white">0</span><span class="track-label text-blue-300">Peringat<br>an (+2)</span></div>
+                    <div class="track-box"><span id="trk-b-out" class="track-val text-cyan-300">0</span><span class="track-label text-cyan-100">Keluar<br>Matras</span></div>
+                    <div class="track-box"><span id="trk-b-8c" class="track-val text-orange-400">0</span><span class="track-label text-orange-200">8-Count<br>(+2)</span></div>
+                </div>
+            </div>
+
+            <!-- TOMBOL FLOATING "PANEL KONTROL" TENGAH BAWAH -->
+            <button onclick="openModal('modal-controls')" class="absolute bottom-[2vh] left-1/2 transform -translate-x-1/2 z-[100] bg-slate-900 border-[0.3vh] border-amber-400 text-amber-400 font-black px-[4vh] py-[1.2vh] rounded-full shadow-[0_0_2vh_rgba(251,191,36,0.8)] flex items-center gap-[1vh] active:scale-95 transition-all text-[2.2vh] uppercase tracking-wider hover:bg-slate-800">
+                <i class="fas fa-sliders-h"></i> Panel Kontrol
+            </button>
+
+        </div>
+    </div>
+
+
+    <!-- ================= MODALS (POP UPS) ================= -->
+
+    <!-- Modal 1: KONTROL DEWAN JURI UTAMA -->
+    <div id="modal-controls" class="modal-overlay">
+        <div class="bg-slate-900 border-[0.3vh] border-slate-600 rounded-[2vh] w-[95vw] h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-800 p-[2.5vh] border-b border-slate-700 flex justify-between items-center shrink-0">
+                <h2 class="text-[3vh] font-black text-amber-400 uppercase tracking-widest"><i class="fas fa-cogs mr-[1vh]"></i> Panel Kontrol Aksi Dewan Juri</h2>
+                <button onclick="closeModal('modal-controls')" class="text-slate-400 hover:text-white transition-colors"><i class="fas fa-times text-[4vh]"></i></button>
+            </div>
+
+            <!-- Modal Content (3 Kolom) -->
+            <div class="flex-1 flex p-[2.5vh] gap-[3vh]">
+                
+                <!-- KIRI: AKSI SUDUT MERAH -->
+                <div class="flex-1 flex flex-col gap-[2vh]">
+                    <div class="text-[1.8vh] text-red-400 font-bold uppercase text-center border-b border-red-500/30 pb-[1vh]">Hukuman Sudut Merah</div>
+                    <button onclick="confirmAction('Berikan Teguran ke Merah?', () => applyWushuAction('merah', 'warning'))" class="btn-wushu btn-warning flex-1 text-[2.5vh] rounded-[1.5vh]"><i class="fas fa-exclamation-triangle"></i> Beri Teguran</button>
+                    <button onclick="confirmAction('Berikan Peringatan ke Merah? (Suntik +2 Semua Juri Biru)', () => applyWushuAction('merah', 'caution'))" class="btn-wushu btn-caution flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-hand-paper"></i> Peringatan (+2 Lawan)</button>
+                    <button onclick="confirmAction('Catat Hitungan Wasit ke Merah? (Suntik +2 Semua Juri Biru)', () => applyWushuAction('merah', '8count'))" class="btn-wushu btn-8count flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-stopwatch"></i> 8-Count (+2 Lawan)</button>
+                    <button onclick="confirmAction('Catat Keluar Matras untuk Merah? (Suntik +2 Semua Juri Biru)', () => applyWushuAction('merah', 'ringout'))" class="btn-wushu btn-ringout flex-1 text-[2.5vh] rounded-[1.5vh]"><i class="fas fa-sign-out-alt"></i> Keluar Matras (+2 Lawan)</button>
+                </div>
+
+                <!-- TENGAH: SISTEM DEWAN -->
+                <div class="w-[28%] flex flex-col gap-[2vh] border-x border-slate-700 px-[3vh]">
+                    <div class="text-[1.8vh] text-slate-400 font-bold uppercase text-center border-b border-slate-500/30 pb-[1vh]">Sistem Pertandingan</div>
+                    
+                    <button onclick="openModal('modal-history'); closeModal('modal-controls')" class="btn-wushu btn-history flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-list-alt"></i> Riwayat Nilai Tabel</button>
+                    
+                    <button onclick="openModal('modal-challenge'); closeModal('modal-controls')" class="bg-slate-700 hover:bg-slate-600 border-[0.3vh] border-emerald-500 text-white font-black flex-1 rounded-[1.5vh] text-[2.2vh] shadow-lg uppercase transition-all flex items-center justify-center gap-[1vh]"><i class="fas fa-video text-emerald-400"></i> VAR / Protes</button>
+                    
+                    <button onclick="openModal('modal-absolute'); closeModal('modal-controls')" class="btn-wushu btn-absolute flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-trophy"></i> Kemenangan Mutlak</button>
+                </div>
+
+                <!-- KANAN: AKSI SUDUT BIRU -->
+                <div class="flex-1 flex flex-col gap-[2vh]">
+                    <div class="text-[1.8vh] text-blue-400 font-bold uppercase text-center border-b border-blue-500/30 pb-[1vh]">Hukuman Sudut Biru</div>
+                    <button onclick="confirmAction('Berikan Teguran ke Biru?', () => applyWushuAction('biru', 'warning'))" class="btn-wushu btn-warning flex-1 text-[2.5vh] rounded-[1.5vh]"><i class="fas fa-exclamation-triangle"></i> Beri Teguran</button>
+                    <button onclick="confirmAction('Berikan Peringatan ke Biru? (Suntik +2 Semua Juri Merah)', () => applyWushuAction('biru', 'caution'))" class="btn-wushu btn-caution flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-hand-paper"></i> Peringatan (+2 Lawan)</button>
+                    <button onclick="confirmAction('Catat Hitungan Wasit ke Biru? (Suntik +2 Semua Juri Merah)', () => applyWushuAction('biru', '8count'))" class="btn-wushu btn-8count flex-1 text-[2.2vh] rounded-[1.5vh]"><i class="fas fa-stopwatch"></i> 8-Count (+2 Lawan)</button>
+                    <button onclick="confirmAction('Catat Keluar Matras untuk Biru? (Suntik +2 Semua Juri Merah)', () => applyWushuAction('biru', 'ringout'))" class="btn-wushu btn-ringout flex-1 text-[2.5vh] rounded-[1.5vh]"><i class="fas fa-sign-out-alt"></i> Keluar Matras (+2 Lawan)</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal 2: Tabel Riwayat Nilai -->
+    <div id="modal-history" class="modal-overlay">
+        <div class="bg-slate-800 border-[0.3vh] border-slate-600 rounded-[2vh] p-[3vh] w-[95vw] h-[95vh] text-center shadow-2xl flex flex-col relative">
+            <h2 class="font-black text-white text-[3vh] uppercase tracking-widest mb-[1vh]"><i class="fas fa-list-alt text-blue-400 mr-[1vh]"></i>Detail Riwayat Penilaian</h2>
+            <p class="text-slate-400 text-[1.8vh] font-bold uppercase mb-[2vh]">Nilai di tabel sudah diakumulasi otomatis dengan suntikan poin hukuman/penalti</p>
+            
+            <div class="flex-1 overflow-auto custom-scroll mb-[2vh] bg-slate-900 rounded-[1.5vh] border border-slate-700 relative">
+                <table class="w-full text-[2vh] text-left text-slate-300 whitespace-nowrap">
+                    <thead class="text-slate-400 bg-slate-950 border-b border-slate-700 sticky top-0 z-10 text-[1.5vh]">
+                        <tr>
+                            <th class="p-[1.5vh] font-bold uppercase tracking-wider text-center">Ronde</th>
+                            <th class="p-[1.5vh] font-bold uppercase tracking-wider">Sudut Atlet</th>
+                            <th class="p-[1.5vh] text-center border-l border-slate-700">J1</th>
+                            <th class="p-[1.5vh] text-center">J2</th>
+                            <th class="p-[1.5vh] text-center">J3</th>
+                            <th class="p-[1.5vh] text-center">J4</th>
+                            <th class="p-[1.5vh] text-center">J5</th>
+                            <th class="p-[1.5vh] text-center border-l border-slate-700 text-yellow-400">Total Suntikan<br>Poin Penalti</th>
+                            <th class="p-[1.5vh] text-center border-l border-slate-700 font-black text-white">VOTE JURI<br>(Kemenangan)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        <!-- Otomatis di-generate -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button onclick="closeModal('modal-history')" class="bg-slate-700 text-white font-bold py-[2vh] rounded-[1vh] uppercase text-[2vh] hover:bg-slate-600 transition-colors mt-auto shrink-0">Tutup Tabel Riwayat</button>
+        </div>
+    </div>
+
+
+    <!-- Modal 3: Keputusan Mutlak (Stop) -->
+    <div id="modal-absolute" class="modal-overlay">
+        <div class="bg-slate-800 border-[0.3vh] border-slate-600 rounded-[2vh] p-[4vh] w-full max-w-[60vw] text-center shadow-2xl">
+            <h2 class="font-black text-purple-400 text-[3.5vh] uppercase italic mb-[1vh]">Hentikan Pertandingan</h2>
+            <p class="text-slate-400 text-[1.8vh] font-bold uppercase mb-[3vh]">Pilih Alasan & Pemenang Akhir:</p>
+            
+            <select id="abs-reason" class="w-full bg-slate-900 border-[0.2vh] border-slate-600 text-white p-[2vh] rounded-[1vh] mb-[4vh] font-bold uppercase text-[2vh] outline-none">
+                <option value="TKO">TKO (Technical Knockout)</option>
+                <option value="KO">KO (Knockout)</option>
+                <option value="GAP">Menang Jarak 12 Poin Mutlak</option>
+                <option value="DISQ">Lawan Didiskualifikasi</option>
+                <option value="INJURY">Cedera / Undur Diri</option>
+            </select>
+
+            <div class="grid grid-cols-2 gap-[2vh] mb-[3vh]">
+                <button onclick="executeAbsolute('merah')" class="bg-wushu-red text-white py-[3vh] rounded-[1.5vh] font-black uppercase shadow-lg active:scale-95 transition-all text-[2.5vh] border-none">Beri Kemenangan<br>MERAH</button>
+                <button onclick="executeAbsolute('biru')" class="bg-wushu-blue text-white py-[3vh] rounded-[1.5vh] font-black uppercase shadow-lg active:scale-95 transition-all text-[2.5vh] border-none">Beri Kemenangan<br>BIRU</button>
+            </div>
+            <button onclick="closeModal('modal-absolute')" class="text-slate-400 text-[2vh] font-bold uppercase hover:text-white transition-colors">Batal</button>
+        </div>
+    </div>
+
+
+    <!-- Modal 4: VAR Coach Challenge -->
+    <div id="modal-challenge" class="modal-overlay">
+        <div class="bg-slate-800 border-[0.3vh] border-emerald-500 rounded-[2vh] p-[4vh] w-full max-w-[50vw] text-center shadow-2xl">
+            <h2 class="font-black text-emerald-400 text-[3.5vh] uppercase italic mb-[1vh]"><i class="fas fa-video mr-2"></i>Video Protes Juri</h2>
+            <p class="text-slate-300 text-[2vh] mb-[4vh]">Waktu pertandingan telah dijeda. Tinjau tayangan ulang.</p>
+            
+            <div class="bg-slate-900 p-[3vh] rounded-[1.5vh] mb-[3vh]">
+                <p class="text-[1.5vh] text-slate-400 uppercase font-bold mb-[2vh]">Keputusan Final Dewan:</p>
+                <div class="grid grid-cols-2 gap-[2vh]">
+                    <button onclick="resolveChallenge(true)" class="bg-emerald-600 hover:bg-emerald-500 text-white py-[2.5vh] rounded-[1vh] font-black uppercase text-[2vh] transition-colors shadow-md">Protes Diterima<br><span class="text-[1.2vh] font-normal">(Gunakan Tmb. Koreksi Manual)</span></button>
+                    <button onclick="resolveChallenge(false)" class="bg-rose-600 hover:bg-rose-500 text-white py-[2.5vh] rounded-[1vh] font-black uppercase text-[2vh] transition-colors shadow-md">Protes Ditolak<br><span class="text-[1.2vh] font-normal">(Lanjutkan Tanding)</span></button>
+                </div>
+            </div>
+            <button onclick="closeModal('modal-challenge')" class="text-slate-400 text-[2vh] font-bold uppercase hover:text-white transition-colors">Tutup Panel Dialog</button>
+        </div>
+    </div>
+
+
+    <!-- Modal 5: Modal Konfirmasi Pilihan -->
+    <div id="modal-confirm" class="modal-overlay" style="z-index: 55000;">
+        <div class="bg-slate-800 border-[0.2vh] border-slate-600 rounded-[2vh] p-[4vh] w-full max-w-[40vw] text-center shadow-[0_0_5vh_rgba(0,0,0,0.8)]">
+            <i class="fas fa-question-circle text-[7vh] text-amber-400 mb-[2vh]"></i>
+            <h3 class="font-black text-white text-[2.5vh] uppercase mb-[4vh]" id="confirm-msg">Yakin melakukan tindakan ini?</h3>
+            <div class="grid grid-cols-2 gap-[2vh]">
+                <button onclick="closeConfirm(false)" class="bg-slate-600 text-white font-bold py-[2vh] rounded-[1vh] uppercase text-[2vh] hover:bg-slate-500 transition-colors">Batal</button>
+                <button onclick="closeConfirm(true)" class="bg-emerald-600 text-white font-bold py-[2vh] rounded-[1vh] uppercase text-[2vh] hover:bg-emerald-500 transition-colors">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+<script type="module">
+    // --- FITUR AUTO FULLSCREEN ---
+    function enforceFullscreen() {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) {
+                docEl.requestFullscreen().catch(err => console.log("Fullscreen blocked: ", err));
+            } else if (docEl.webkitRequestFullscreen) { 
+                docEl.webkitRequestFullscreen();
+            }
+        }
+    }
+    document.body.addEventListener('click', enforceFullscreen);
+    document.body.addEventListener('touchstart', enforceFullscreen, { passive: true });
+
+    // INTEGRASI FIREBASE WUSHU SANDA
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCUhrQj0vxKYDtf1iSJVetY6gQ5K932blM",
+      authDomain: "wushu-sanda-b85dc.firebaseapp.com",
+      databaseURL: "https://wushu-sanda-b85dc-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "wushu-sanda-b85dc",
+      storageBucket: "wushu-sanda-b85dc.firebasestorage.app",
+      messagingSenderId: "335593032214",
+      appId: "1:335593032214:web:65e2186bee003408c48337"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const dbRef = ref(database, 'wushu_sanda_scoring'); 
+
+    // Struktur Default
+    const DEFAULT_STATE = {
+        timer: 120, babak: 1, isRunning: false, bertandingIdx: -1, pointGap: 12,
+        matches: [],
+        merah: { 
+            baseScore: [0,0,0], actions: [], roundWins: [false,false,false],
+            juri: { j1: [0,0,0], j2: [0,0,0], j3: [0,0,0], j4: [0,0,0], j5: [0,0,0] }
+        },
+        biru: { 
+            baseScore: [0,0,0], actions: [], roundWins: [false,false,false],
+            juri: { j1: [0,0,0], j2: [0,0,0], j3: [0,0,0], j4: [0,0,0], j5: [0,0,0] }
+        },
+        juriStatus: { j1: true, j2: true, j3: true, j4: true, j5: true }
+    };
+
+    window.wushuState = DEFAULT_STATE;
+    let pendingCallback = null;
+
+    // --- FIREBASE LISTENERS ---
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            ['merah', 'biru'].forEach(side => {
+                if (!data[side]) data[side] = {};
+                if (!data[side].baseScore) data[side].baseScore = [0,0,0];
+                if (!data[side].actions) data[side].actions = [];
+                if (!data[side].roundWins) data[side].roundWins = [false,false,false];
+                if (!data[side].juri) data[side].juri = { j1:[0,0,0], j2:[0,0,0], j3:[0,0,0], j4:[0,0,0], j5:[0,0,0] };
+            });
+
+            window.wushuState = data;
+            updateUI();
+            
+            const badge = document.getElementById('sync-indicator');
+            badge.classList.add('show');
+            setTimeout(() => badge.classList.remove('show'), 500);
+        } else {
+            set(dbRef, DEFAULT_STATE);
+        }
+    });
+
+    window.broadcast = function(path, value) {
+        if(path === "ALL") set(dbRef, value);
+        else set(ref(database, 'wushu_sanda_scoring/' + path), value);
+    }
+
+    // --- FUNGSI KALKULASI SANDA (MENYUNTIKKAN POIN KE JURI) ---
+    
+    // 1. Menghitung Poin Penalti Lawan (Hanya nilai tambahan mutlak)
+    function getPenaltyPoints(side, roundIndex) {
+        const state = window.wushuState;
+        const opp = side === 'merah' ? 'biru' : 'merah';
+        const oppCau = state[opp].actions.filter(a => a.type === 'caution' && a.round === roundIndex + 1).length;
+        const opp8c = state[opp].actions.filter(a => a.type === '8count' && a.round === roundIndex + 1).length;
+        const oppOut = state[opp].actions.filter(a => a.type === 'ringout' && a.round === roundIndex + 1).length;
+        
+        // Peringatan, 8-Count, dan Jatuh Keluar Matras memberi +2 pada lawan
+        return (oppCau * 2) + (opp8c * 2) + (oppOut * 2); 
+    }
+
+    // 2. Mendapatkan Skor Akhir Juri Spesifik (Tombol Juri + Tombol Manual + Suntikan Penalti)
+    function getJudgeScore(side, judgeNum, roundIndex) {
+        const state = window.wushuState;
+        const jKey = 'j' + judgeNum;
+        
+        const rawScore = (state[side].juri && state[side].juri[jKey] && state[side].juri[jKey][roundIndex]) ? state[side].juri[jKey][roundIndex] : 0;
+        const manualBase = state[side].baseScore[roundIndex] || 0; 
+        const penalties = getPenaltyPoints(side, roundIndex); 
+        
+        return rawScore + manualBase + penalties;
+    }
+
+    // --- UI UPDATER UTAMA ---
+    function updateUI() {
+        const state = window.wushuState;
+        let activeMatch = null;
+        if (state.bertandingIdx !== undefined && state.bertandingIdx >= 0 && state.matches) {
+            activeMatch = state.matches[state.bertandingIdx];
+        }
+
+        if (activeMatch) {
+            document.getElementById('dw-match-info').innerText = `PARTAI ${activeMatch.p} - ${activeMatch.kelas} ${activeMatch.cat} ${activeMatch.gender}`;
+            document.getElementById('dw-m-name').innerText = activeMatch.m || "MERAH";
+            document.getElementById('dw-m-kont').innerText = activeMatch.km || "KONTINGEN MERAH";
+            document.getElementById('dw-b-name').innerText = activeMatch.b || "BIRU";
+            document.getElementById('dw-b-kont').innerText = activeMatch.kb || "KONTINGEN BIRU";
+        }
+
+        document.getElementById('dw-babak-disp').innerText = `RONDE ${state.babak}`;
+        const mStr = Math.floor(state.timer / 60).toString().padStart(2, '0');
+        const sStr = (state.timer % 60).toString().padStart(2, '0');
+        document.getElementById('dw-timer-disp').innerText = `${mStr}:${sStr}`;
+
+        // Update Lampu Juri Header (Koneksi)
+        if (state.juriStatus) {
+            for(let i=1; i<=5; i++) {
+                let lamp = document.getElementById('lamp-j' + i);
+                if(lamp) lamp.className = 'juri-lamp ' + (state.juriStatus['j'+i] ? 'lamp-on' : 'lamp-off');
+            }
+        }
+
+        // ================= KALKULASI KEMENANGAN RONDE (MAYORITAS JURI) =================
+        let roundWinsChanged = false;
+        let mTotalRoundsWon = 0;
+        let bTotalRoundsWon = 0;
+
+        for (let r = 0; r < 3; r++) {
+            let mVotes = 0;
+            let bVotes = 0;
+            
+            for(let i=1; i<=5; i++) {
+                let scoreM = getJudgeScore('merah', i, r);
+                let scoreB = getJudgeScore('biru', i, r);
+                
+                if (scoreM > scoreB) mVotes++;
+                else if (scoreB > scoreM) bVotes++;
+            }
+            
+            let mWin = mVotes > bVotes;
+            let bWin = bVotes > mVotes;
+
+            if (state.merah.roundWins[r] !== mWin) { state.merah.roundWins[r] = mWin; roundWinsChanged = true; }
+            if (state.biru.roundWins[r] !== bWin) { state.biru.roundWins[r] = bWin; roundWinsChanged = true; }
+            
+            if (state.merah.roundWins[r]) mTotalRoundsWon++;
+            if (state.biru.roundWins[r]) bTotalRoundsWon++;
+        }
+        
+        if (roundWinsChanged) {
+            window.broadcast('merah/roundWins', state.merah.roundWins);
+            window.broadcast('biru/roundWins', state.biru.roundWins);
+        }
+
+        // --- RENDER SKOR RAKSASA ---
+        document.getElementById('score-m').innerText = mTotalRoundsWon;
+        document.getElementById('score-b').innerText = bTotalRoundsWon;
+
+        document.getElementById('score-m').classList.toggle('text-glow-green', mTotalRoundsWon >= 2);
+        document.getElementById('score-b').classList.toggle('text-glow-green', bTotalRoundsWon >= 2);
+
+        // Tracker Penalti
+        ['merah', 'biru'].forEach(side => {
+            const prefix = side === 'merah' ? 'm' : 'b';
+            const acts = state[side].actions.filter(a => a.round === state.babak); 
+            
+            document.getElementById(`trk-${prefix}-warn`).innerText = acts.filter(a => a.type === 'warning').length;
+            document.getElementById(`trk-${prefix}-cau`).innerText = acts.filter(a => a.type === 'caution').length;
+            document.getElementById(`trk-${prefix}-out`).innerText = acts.filter(a => a.type === 'ringout').length;
+            document.getElementById(`trk-${prefix}-8c`).innerText = acts.filter(a => a.type === '8count').length;
+        });
+
+        // --- RENDER LAMPU KEMENANGAN RONDE (MERAH ATAU BIRU) ---
+        // SUDUT MERAH
+        document.getElementById(`m-win-1`).className = 'round-win-circle ' + (state.merah.roundWins[0] ? 'win-red' : '');
+        document.getElementById(`m-win-2`).className = 'round-win-circle ' + (state.merah.roundWins[1] ? 'win-red' : '');
+        document.getElementById(`m-win-3`).className = 'round-win-circle ' + (state.merah.roundWins[2] ? 'win-red' : '');
+
+        // SUDUT BIRU (ID Terbalik berdasarkan layout flex-row-reverse)
+        document.getElementById(`b-win-1`).className = 'round-win-circle ' + (state.biru.roundWins[0] ? 'win-blue' : '');
+        document.getElementById(`b-win-2`).className = 'round-win-circle ' + (state.biru.roundWins[1] ? 'win-blue' : '');
+        document.getElementById(`b-win-3`).className = 'round-win-circle ' + (state.biru.roundWins[2] ? 'win-blue' : '');
+
+
+        // ================= UPDATE DATA PANEL TENGAH JURI =================
+        const currentRoundIdx = (state.babak || 1) - 1;
+        document.getElementById('mid-round-num').innerText = state.babak || '-';
+        
+        for (let i = 1; i <= 5; i++) {
+            let mEl = document.getElementById('mid-m-j' + i);
+            let bEl = document.getElementById('mid-b-j' + i);
+            
+            let jScoreM = getJudgeScore('merah', i, currentRoundIdx);
+            let jScoreB = getJudgeScore('biru', i, currentRoundIdx);
+            
+            if(mEl && bEl) {
+                mEl.innerText = jScoreM;
+                bEl.innerText = jScoreB;
+                
+                // Reset styling base
+                mEl.className = "w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-all z-10 duration-300";
+                bEl.className = "w-[5.5vh] flex items-center justify-center text-white font-black text-[3vh] leading-none transition-all z-10 duration-300";
+
+                // Highlight logika pemenang pada angka
+                if (jScoreM > jScoreB) {
+                    mEl.classList.add('bg-red-500', 'shadow-[inset_0_0_1.5vh_rgba(0,0,0,0.3)]'); // Menyala Merah
+                    bEl.classList.add('bg-blue-900', 'opacity-80'); // Meredup Biru Gelap
+                } else if (jScoreB > jScoreM) {
+                    mEl.classList.add('bg-red-900', 'opacity-80'); // Meredup Merah Gelap
+                    bEl.classList.add('bg-blue-500', 'shadow-[inset_0_0_1.5vh_rgba(0,0,0,0.3)]'); // Menyala Biru
+                } else {
+                    // Seri (Tie)
+                    mEl.classList.add('bg-[#dc2626]'); // Merah Normal
+                    bEl.classList.add('bg-[#1d4ed8]'); // Biru Normal
+                }
+            }
+
+            // Render Lampu Pemenang Juri secara Otomatis dan Serentak Berdasarkan Poin Terbanyak
+            let lampMid = document.getElementById('mid-lamp-j' + i);
+            if(lampMid) {
+                if (jScoreM > jScoreB) {
+                    // Lampu Menyala Merah (Sudut Merah Unggul)
+                    lampMid.className = 'absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-white bg-red-500 shadow-[0_0_1.5vh_#ef4444] transition-all duration-300';
+                } else if (jScoreB > jScoreM) {
+                    // Lampu Menyala Biru (Sudut Biru Unggul)
+                    lampMid.className = 'absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-white bg-blue-500 shadow-[0_0_1.5vh_#3b82f6] transition-all duration-300';
+                } else {
+                    // Lampu Mati / Redup Jika Poin Sama
+                    lampMid.className = 'absolute right-[0.5vh] w-[2.5vh] h-[2.5vh] rounded-full border-[0.3vh] border-slate-500 bg-[#3a0a0a] shadow-[inset_0_0_1vh_rgba(0,0,0,0.8)] transition-all duration-300';
+                }
+            }
+        }
+
+        renderHistoryTable();
+    }
+
+    function renderHistoryTable() {
+        const tbody = document.getElementById('history-table-body');
+        let html = '';
+
+        for (let r = 0; r < 3; r++) {
+            
+            // Hitung VOTE
+            let mVotes = 0; let bVotes = 0;
+            let mJ = []; let bJ = [];
+            
+            for(let i=1; i<=5; i++) {
+                let sM = getJudgeScore('merah', i, r);
+                let sB = getJudgeScore('biru', i, r);
+                mJ.push(sM); bJ.push(sB);
+                if (sM > sB) mVotes++; else if (sB > sM) bVotes++;
+            }
+
+            let penM = getPenaltyPoints('merah', r);
+            let penB = getPenaltyPoints('biru', r);
+
+            html += `
+                <tr class="border-b border-slate-700 bg-slate-800 hover:bg-slate-700">
+                    <td class="p-[1vh] font-bold text-center border-r border-slate-700" rowspan="2">Ronde ${r+1}</td>
+                    <td class="p-[1vh] font-black text-red-400 uppercase">Merah</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 text-slate-300 font-mono ${mJ[0]>bJ[0]?'text-white font-black':''}">${mJ[0]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${mJ[1]>bJ[1]?'text-white font-black':''}">${mJ[1]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${mJ[2]>bJ[2]?'text-white font-black':''}">${mJ[2]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${mJ[3]>bJ[3]?'text-white font-black':''}">${mJ[3]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${mJ[4]>bJ[4]?'text-white font-black':''}">${mJ[4]}</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 font-bold text-yellow-400">+${penM} Total</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 font-black text-red-400 text-[2.5vh]">${mVotes} <span class="text-[1.2vh] font-normal text-slate-400">Juri</span></td>
+                </tr>
+                <tr class="border-b-[0.4vh] border-slate-900 bg-slate-800/50 hover:bg-slate-700">
+                    <td class="p-[1vh] font-black text-blue-400 uppercase">Biru</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 text-slate-300 font-mono ${bJ[0]>mJ[0]?'text-white font-black':''}">${bJ[0]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${bJ[1]>mJ[1]?'text-white font-black':''}">${bJ[1]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${bJ[2]>mJ[2]?'text-white font-black':''}">${bJ[2]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${bJ[3]>mJ[3]?'text-white font-black':''}">${bJ[3]}</td>
+                    <td class="p-[1vh] text-center text-slate-300 font-mono ${bJ[4]>mJ[4]?'text-white font-black':''}">${bJ[4]}</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 font-bold text-yellow-400">+${penB} Total</td>
+                    <td class="p-[1vh] text-center border-l border-slate-700 font-black text-blue-400 text-[2.5vh]">${bVotes} <span class="text-[1.2vh] font-normal text-slate-400">Juri</span></td>
+                </tr>
+            `;
+        }
+        tbody.innerHTML = html;
+    }
+
+    // --- LOGIKA TOMBOL MANUAL & HUKUMAN ---
+    window.manualAdjust = function(side, val) {
+        if(window.wushuState.bertandingIdx === -1) return alert("Belum ada partai aktif!");
+        const roundIdx = (window.wushuState.babak || 1) - 1;
+        let currentScore = (window.wushuState[side].baseScore[roundIdx] || 0) + val;
+        window.broadcast(`${side}/baseScore/${roundIdx}`, currentScore);
+    }
+
+    window.applyWushuAction = function(side, type) {
+        if(window.wushuState.bertandingIdx === -1) return alert("Belum ada partai aktif!");
+        
+        const actions = window.wushuState[side].actions || [];
+        actions.push({ type: type, round: window.wushuState.babak });
+        window.broadcast(`${side}/actions`, actions);
+        
+        if (type === 'ringout') {
+            const outCount = actions.filter(a => a.type === 'ringout' && a.round === window.wushuState.babak).length;
+            if (outCount >= 2) {
+                setTimeout(() => {
+                    const opp = side === 'merah' ? 'biru' : 'merah';
+                    alert(`PELANGGARAN BERAT: SUDUT ${side.toUpperCase()} KELUAR MATRAS 2 KALI!\nRonde dimenangkan mutlak oleh Sudut ${opp.toUpperCase()}!`);
+                    window.wushuState[opp].roundWins[window.wushuState.babak - 1] = true;
+                    window.broadcast(`${opp}/roundWins`, window.wushuState[opp].roundWins);
+                    window.broadcast('isRunning', false);
+                }, 500);
+            }
+        }
+    }
+
+    // --- LOGIKA MODAL POP UP ---
+    window.openModal = function(id) { document.getElementById(id).classList.add('active'); }
+    window.closeModal = function(id) { document.getElementById(id).classList.remove('active'); }
+
+    window.confirmAction = function(msg, callback) {
+        document.getElementById('confirm-msg').innerText = msg;
+        pendingCallback = callback;
+        window.openModal('modal-confirm');
+    }
+
+    window.closeConfirm = function(proceed) {
+        window.closeModal('modal-confirm');
+        if (proceed && pendingCallback) {
+            pendingCallback();
+            window.closeModal('modal-controls');
+        }
+        pendingCallback = null;
+    }
+
+    window.executeAbsolute = function(winner) {
+        const reason = document.getElementById('abs-reason').value;
+        window.broadcast('isRunning', false); 
+        window.closeModal('modal-absolute');
+        
+        setTimeout(() => {
+            alert(`PERTANDINGAN DIHENTIKAN!\nPemenang: SUDUT ${winner.toUpperCase()}\nAlasan: ${reason}`);
+            window.broadcast('monViewMode', 'winner');
+            
+            if(window.wushuState.bertandingIdx >= 0) {
+                const matchUpdate = window.wushuState.matches[window.wushuState.bertandingIdx];
+                matchUpdate.status = 'selesai';
+                matchUpdate.winnerSide = winner;
+                matchUpdate.winner = winner === 'merah' ? matchUpdate.m : matchUpdate.b;
+                window.broadcast(`matches/${window.wushuState.bertandingIdx}`, matchUpdate);
+            }
+        }, 300);
+    }
+
+    window.resolveChallenge = function(accepted) {
+        window.closeModal('modal-challenge');
+        if(accepted) alert("Protes Diterima.\nSilahkan sesuaikan skor yang salah menggunakan tombol -1 / +1 di Dashboard Utama Dewan.");
+        else {
+            alert("Protes Ditolak. Pertandingan dilanjutkan.");
+            window.broadcast('isRunning', true);
+        }
+    }
+</script>
+</body>
+</html>
